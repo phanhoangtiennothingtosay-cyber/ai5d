@@ -97,11 +97,11 @@ Multiple 3D blocks can process information in parallel.
 
 Conceptually:
 
-        ┌── 3D ──┐
-        │        │
-Input → ├── 3D ──┤ → Reduction
-        │        │
-        └── 3D ──┘
+                  ┌── 3D ──┐
+                  │        │
+         Input → ├── 3D ──┤ → Reduction
+                  │        │
+                  └── 3D ──┘
 
 The purpose is not simply to force every 3D block to agree.
 
