@@ -6,12 +6,6 @@
 
 namespace ai5d {
 
-Tensor::Tensor()
-    : data_{},
-      shape_{}
-{
-}
-
 Tensor::Tensor(
     const std::vector<std::size_t>& shape
 )
@@ -32,8 +26,6 @@ Tensor::Tensor(
       shape_{data.size()}
 {
 }
-
-Tensor::~Tensor() = default;
 
 Tensor Tensor::from_shape(
     const std::vector<std::size_t>& shape
