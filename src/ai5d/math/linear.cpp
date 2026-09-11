@@ -1,6 +1,7 @@
 #include "ai5d/math/linear.hpp"
 
 #include <stdexcept>
+#include <vector>
 
 namespace ai5d::math {
 
@@ -8,8 +9,7 @@ Tensor linear(
     const Tensor& input,
     const Tensor& weights,
     const Tensor& bias
-)
-{
+) {
     Tensor output = matmul(input, weights);
 
     if (!bias.empty()) {
@@ -22,8 +22,7 @@ Tensor linear(
 Tensor matmul(
     const Tensor& lhs,
     const Tensor& rhs
-)
-{
+) {
     if (lhs.empty() || rhs.empty()) {
         return Tensor{};
     }
@@ -46,15 +45,19 @@ Tensor matmul(
         );
     }
 
-    Tensor output({lhs_rows, rhs_cols});
+    Tensor output(
+        std::vector<std::size_t>{lhs_rows, rhs_cols}
+    );
 
     for (std::size_t i = 0; i < lhs_rows; ++i) {
         for (std::size_t j = 0; j < rhs_cols; ++j) {
+
             float sum = 0.0f;
 
             for (std::size_t k = 0; k < lhs_cols; ++k) {
-                sum += lhs[i * lhs_cols + k]
-                     * rhs[k * rhs_cols + j];
+                sum +=
+                    lhs[i * lhs_cols + k] *
+                    rhs[k * rhs_cols + j];
             }
 
             output[i * rhs_cols + j] = sum;
@@ -67,8 +70,7 @@ Tensor matmul(
 Tensor add_bias(
     const Tensor& input,
     const Tensor& bias
-)
-{
+) {
     if (input.empty()) {
         return Tensor{};
     }
@@ -96,8 +98,7 @@ float dot(
     const float* lhs,
     const float* rhs,
     std::size_t size
-)
-{
+) {
     if (lhs == nullptr || rhs == nullptr) {
         throw std::invalid_argument(
             "AI5D: dot received a null pointer."
