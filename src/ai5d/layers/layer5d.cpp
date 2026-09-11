@@ -1,6 +1,7 @@
 #include "ai5d/layers/layer5d.hpp"
 
-#include <algorithm>
+#include <limits>
+#include <stdexcept>
 
 namespace ai5d::layers {
 
@@ -10,89 +11,101 @@ Tensor Layer5D::forward(const Tensor& input) const
         return Tensor{};
     }
 
-    return input;
+    /*
+     * forward() xử lý một candidate đơn.
+     *
+     * Việc lựa chọn giữa nhiều candidate thuộc về select().
+     */
+    Tensor output(input.shape());
+
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        output[i] = input[i];
+    }
+
+    return output;
 }
 
-Tensor Layer5D::decide(const std::vector<Tensor>& candidates) const
-{
-    if (candidates.empty() || should_reject(candidates)) {
-        return Tensor{};
-    }
-
-    const Tensor* best = &candidates.front();
-    float best_score = evaluate(*best);
-
-    for (std::size_t i = 1; i < candidates.size(); ++i) {
-        const float current_score = evaluate(candidates[i]);
-
-        if (current_score > best_score) {
-            best = &candidates[i];
-            best_score = current_score;
-        }
-    }
-
-    return *best;
-}
-
-float Layer5D::evaluate(const Tensor& candidate) const
-{
-    if (candidate.empty()) {
-        return 0.0f;
-    }
-
-    float total = 0.0f;
-
-    for (std::size_t i = 0; i < candidate.size(); ++i) {
-        total += candidate[i];
-    }
-
-    return total / static_cast<float>(candidate.size());
-}
-
-bool Layer5D::accept(const Tensor& candidate) const
-{
-    if (candidate.empty()) {
-        return false;
-    }
-
-    return evaluate(candidate) >= acceptance_threshold_;
-}
-
-bool Layer5D::should_reject(
+Tensor Layer5D::select(
     const std::vector<Tensor>& candidates
 ) const
 {
     if (candidates.empty()) {
-        return true;
+        return Tensor{};
     }
 
-    for (const Tensor& candidate : candidates) {
-        if (accept(candidate)) {
-            return false;
+    std::size_t best_index = 0;
+
+    float best_score =
+        -std::numeric_limits<float>::infinity();
+
+    bool found_valid_candidate = false;
+
+    for (std::size_t i = 0; i < candidates.size(); ++i) {
+        if (candidates[i].empty()) {
+            continue;
+        }
+
+        const float current_score =
+            evaluate(candidates[i]);
+
+        if (!accept(current_score)) {
+            continue;
+        }
+
+        if (!found_valid_candidate ||
+            current_score > best_score) {
+
+            best_score = current_score;
+            best_index = i;
+            found_valid_candidate = true;
         }
     }
 
-    return true;
+    /*
+     * Không có candidate nào đạt ngưỡng.
+     * 5D từ chối toàn bộ thay vì ép chọn một kết quả xấu.
+     */
+    if (!found_valid_candidate) {
+        return Tensor{};
+    }
+
+    return candidates[best_index];
 }
 
-std::size_t Layer5D::candidate_count() const
+float Layer5D::evaluate(const Tensor& input) const
 {
-    return candidate_count_;
+    if (input.empty()) {
+        return 0.0f;
+    }
+
+    float sum = 0.0f;
+
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        sum += input[i];
+    }
+
+    return sum / static_cast<float>(input.size());
 }
 
-void Layer5D::set_candidate_count(std::size_t count)
+bool Layer5D::accept(float score) const
 {
-    candidate_count_ = count;
+    return score >= threshold_;
 }
 
-float Layer5D::acceptance_threshold() const
+float Layer5D::threshold() const
 {
-    return acceptance_threshold_;
+    return threshold_;
 }
 
-void Layer5D::set_acceptance_threshold(float threshold)
+void Layer5D::set_threshold(float value)
 {
-    acceptance_threshold_ = threshold;
+    if (value < 0.0f) {
+        throw std::invalid_argument(
+            "AI5D: Layer5D threshold cannot be negative."
+        );
+    }
+
+    threshold_ = value;
 }
 
 } // namespace ai5d::layers
