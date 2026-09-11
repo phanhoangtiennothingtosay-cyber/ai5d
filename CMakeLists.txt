@@ -1,6 +1,5 @@
 # ============================================================
 # AI5D — CMakeLists.txt
-# Đặt tại thư mục gốc repository, ngang hàng với README.md
 # ============================================================
 
 cmake_minimum_required(VERSION 3.15)
@@ -50,10 +49,18 @@ target_include_directories(ai5d_core
 )
 
 # ------------------------------------------------------------
-# 3. pybind11
-#
-# Ưu tiên pybind11 đã được cài trong môi trường.
-# Nếu chưa có thì FetchContent tải đúng phiên bản cố định.
+# 3. Python
+# ------------------------------------------------------------
+
+find_package(Python
+    COMPONENTS
+        Interpreter
+        Development
+    REQUIRED
+)
+
+# ------------------------------------------------------------
+# 4. pybind11
 # ------------------------------------------------------------
 
 find_package(pybind11 QUIET CONFIG)
@@ -74,16 +81,18 @@ if(NOT pybind11_FOUND)
 endif()
 
 # ------------------------------------------------------------
-# 4. Python extension module
+# 5. Python extension module
 # ------------------------------------------------------------
 
 pybind11_add_module(_ai5d
     python/bindings.cpp
 )
 
+# AI5D C++ core + Python runtime
 target_link_libraries(_ai5d
     PRIVATE
         ai5d_core
+        Python::Python
 )
 
 target_include_directories(_ai5d
@@ -92,15 +101,7 @@ target_include_directories(_ai5d
 )
 
 # ------------------------------------------------------------
-# 5. Python package output
-#
-# Linux/macOS:
-#     _ai5d.so
-#
-# Windows:
-#     _ai5d.pyd
-#
-# Cả hai đều được đưa vào package ai5d/.
+# 6. Python package output
 # ------------------------------------------------------------
 
 set_target_properties(_ai5d PROPERTIES
@@ -114,8 +115,7 @@ set_target_properties(_ai5d PROPERTIES
 )
 
 # ------------------------------------------------------------
-# 6. Keep output directory consistent for multi-config builds
-#    (Visual Studio / Xcode)
+# 7. Multi-config generators
 # ------------------------------------------------------------
 
 foreach(CONFIG Debug Release RelWithDebInfo MinSizeRel)
@@ -123,11 +123,13 @@ foreach(CONFIG Debug Release RelWithDebInfo MinSizeRel)
     string(TOUPPER ${CONFIG} CONFIG_UPPER)
 
     set_target_properties(_ai5d PROPERTIES
+
         LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER}
             ${CMAKE_CURRENT_SOURCE_DIR}/ai5d
 
         RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER}
             ${CMAKE_CURRENT_SOURCE_DIR}/ai5d
+
     )
 
 endforeach()
