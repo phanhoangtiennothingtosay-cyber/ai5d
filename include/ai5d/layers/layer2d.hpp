@@ -2,20 +2,16 @@
 
 #include <cstddef>
 #include <vector>
-
 #include "ai5d/tensor.hpp"
 
 namespace ai5d::layers {
 
 /**
- * @brief Tầng 2D của AI5D.
+ * @brief Tầng tổ chức và đánh giá các đơn vị 1D.
  *
- * Layer2D nhận dữ liệu từ các worker 1D, tổ chức chúng
- * thành các nhóm/matrix và thực hiện xử lý ở cấp 2D.
- *
- * WARNING:
- * Đây là phiên bản BETA / EXPERIMENTAL.
- * API và thuật toán có thể thay đổi.
+ * Layer2D nhận dữ liệu từ Layer1D và tổ chức chúng
+ * thành cấu trúc 2 chiều để các worker có thể xử lý
+ * và đánh giá các kết quả.
  */
 class Layer2D {
 public:
@@ -23,52 +19,56 @@ public:
     ~Layer2D() = default;
 
     /**
-     * @brief Xử lý Tensor đầu vào từ tầng 1D.
+     * @brief Đưa Tensor qua Layer2D.
      *
-     * @param input Dữ liệu đầu vào.
-     * @return Tensor kết quả 2D.
+     * @param input Tensor đầu vào.
+     * @return Tensor sau khi xử lý.
      */
     Tensor forward(const Tensor& input) const;
 
     /**
-     * @brief Gom nhiều kết quả 1D thành một Tensor 2D.
+     * @brief Kết hợp nhiều candidate thành một kết quả.
      *
-     * @param inputs Các kết quả từ worker 1D.
-     * @return Tensor 2D đã được tổ chức.
+     * @param candidates Danh sách các Tensor ứng viên.
+     * @return Candidate được lựa chọn.
      */
-    Tensor combine(
-        const std::vector<Tensor>& inputs
-    ) const;
+    Tensor combine(const std::vector<Tensor>& candidates) const;
 
     /**
-     * @brief Chấm điểm một candidate.
+     * @brief Đánh giá một Tensor.
      *
-     * Score được sử dụng ở các tầng phía trên để
-     * đánh giá và lựa chọn kết quả.
-     *
-     * @param candidate Candidate cần đánh giá.
-     * @return Điểm số.
+     * @param input Tensor cần đánh giá.
+     * @return Điểm số của Tensor.
      */
-    float score(const Tensor& candidate) const;
+    float score(const Tensor& input) const;
 
     /**
-     * @brief Số worker 1D thuộc Layer2D.
+     * @brief Lấy số worker của Layer2D.
      */
     std::size_t worker_count() const;
 
     /**
-     * @brief Đặt số worker 1D.
+     * @brief Đặt số worker của Layer2D.
+     *
+     * @param count Số worker.
      */
     void set_worker_count(std::size_t count);
 
     /**
-     * @brief Kích thước ma trận 2D.
+     * @brief Lấy số hàng của cấu trúc 2D.
      */
     std::size_t rows() const;
+
+    /**
+     * @brief Lấy số cột của cấu trúc 2D.
+     */
     std::size_t cols() const;
 
     /**
-     * @brief Đặt kích thước ma trận 2D.
+     * @brief Đặt kích thước cấu trúc 2D.
+     *
+     * @param rows Số hàng.
+     * @param cols Số cột.
      */
     void set_shape(
         std::size_t rows,
@@ -76,7 +76,7 @@ public:
     );
 
 private:
-    std::size_t worker_count_ = 0;
+    std::size_t worker_count_ = 1;
     std::size_t rows_ = 0;
     std::size_t cols_ = 0;
 };
