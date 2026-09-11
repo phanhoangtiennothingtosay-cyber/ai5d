@@ -1,52 +1,70 @@
 #pragma once
 
 #include <cstddef>
-#include <vector>
 #include <initializer_list>
+#include <vector>
 
 namespace ai5d {
 
 /**
  * @brief Tensor dữ liệu cơ bản của AI5D.
  *
- * Tensor sử dụng bộ nhớ liên tục (contiguous memory).
- * Đây là lớp dữ liệu nền cho các tầng 1D, 2D, 3D, 4D và 5D.
+ * Tensor sử dụng:
+ * - float32 làm scalar mặc định.
+ * - contiguous storage.
+ * - row-major layout cho Tensor từ 2D trở lên.
+ * - deep copy.
  *
- * WARNING:
- * Đây là phiên bản BETA / EXPERIMENTAL.
- * API và cấu trúc nội bộ có thể thay đổi.
+ * Shape:
+ *   [D]       -> vector 1D
+ *   [R, C]    -> matrix 2D
+ *   [D0,...]  -> Tensor nhiều chiều
  */
 class Tensor {
 public:
     Tensor();
-
-    /**
-     * @brief Tạo Tensor với kích thước cho trước.
-     *
-     * Ví dụ:
-     *     Tensor t({2, 3});
-     */
     explicit Tensor(const std::vector<std::size_t>& shape);
 
     /**
-     * @brief Tạo Tensor từ dữ liệu 1D.
+     * @brief Tạo Tensor từ dữ liệu thô.
+     *
+     * Ví dụ:
+     * Tensor{1.0f, 2.0f, 3.0f}
+     *
+     * sẽ có shape [3].
      */
     Tensor(std::initializer_list<float> data);
 
     ~Tensor();
 
-    // ---------------------------------------------------------------------
-    // Data
-    // ---------------------------------------------------------------------
+    // Explicit copy semantics.
+    Tensor(const Tensor&) = default;
+    Tensor& operator=(const Tensor&) = default;
+
+    // Explicit move semantics.
+    Tensor(Tensor&&) noexcept = default;
+    Tensor& operator=(Tensor&&) noexcept = default;
 
     /**
-     * @brief Truy cập dữ liệu thô.
+     * @brief Tạo Tensor chỉ từ shape.
+     *
+     * Đây là API rõ ràng để phân biệt shape
+     * với dữ liệu thô.
+     *
+     * Ví dụ:
+     * Tensor::from_shape({2, 3});
+     */
+    static Tensor from_shape(
+        const std::vector<std::size_t>& shape
+    );
+
+    /**
+     * @brief Truy cập vùng dữ liệu liên tục.
+     *
+     * Pointer chỉ hợp lệ trong lifetime của Tensor
+     * và có thể mất hiệu lực sau reshape/resize.
      */
     float* data();
-
-    /**
-     * @brief Truy cập dữ liệu chỉ đọc.
-     */
     const float* data() const;
 
     /**
@@ -55,41 +73,31 @@ public:
     std::size_t size() const;
 
     /**
-     * @brief Số chiều của Tensor.
+     * @brief Số chiều.
      */
     std::size_t ndim() const;
 
     /**
-     * @brief Kích thước từng chiều.
+     * @brief Shape của Tensor.
      */
     const std::vector<std::size_t>& shape() const;
 
-    // ---------------------------------------------------------------------
-    // Element access
-    // ---------------------------------------------------------------------
-
     /**
-     * @brief Truy cập phần tử theo chỉ số phẳng.
+     * @brief Truy cập phần tử theo flat index.
      *
-     * Dữ liệu được lưu liên tục trong memory.
+     * @throws std::out_of_range nếu index không hợp lệ.
      */
     float& operator[](std::size_t index);
-
-    /**
-     * @brief Truy cập phần tử chỉ đọc.
-     */
     const float& operator[](std::size_t index) const;
 
-    // ---------------------------------------------------------------------
-    // Shape
-    // ---------------------------------------------------------------------
-
     /**
-     * @brief Thay đổi shape mà không thay đổi dữ liệu.
+     * @brief Thay đổi shape nhưng không thay đổi dữ liệu.
      *
-     * Tensor mới phải có cùng số phần tử.
+     * Tổng số phần tử trước và sau phải giống nhau.
      */
-    void reshape(const std::vector<std::size_t>& new_shape);
+    void reshape(
+        const std::vector<std::size_t>& new_shape
+    );
 
     /**
      * @brief Kiểm tra Tensor có rỗng hay không.
@@ -97,33 +105,40 @@ public:
     bool empty() const;
 
     /**
-     * @brief Xóa toàn bộ dữ liệu.
+     * @brief Xóa toàn bộ dữ liệu và shape.
      */
     void clear();
 
-    // ---------------------------------------------------------------------
-    // Raw vector access
-    // ---------------------------------------------------------------------
-
     /**
-     * @brief Lấy vector dữ liệu.
+     * @brief Truy cập vector dữ liệu thô.
      */
     std::vector<float>& vector();
-
-    /**
-     * @brief Lấy vector dữ liệu chỉ đọc.
-     */
     const std::vector<float>& vector() const;
 
-private:
-    // Dữ liệu được lưu liên tục để thuận tiện cho CPU cache/SIMD.
-    std::vector<float> data_;
+    /**
+     * @brief Kiểm tra Tensor có chứa NaN hay không.
+     *
+     * Không tự động gọi trong các hot path.
+     */
+    bool has_nan() const;
 
-    // Shape của Tensor.
+    /**
+     * @brief Kiểm tra Tensor có chứa Inf hay không.
+     *
+     * Không tự động gọi trong các hot path.
+     */
+    bool has_inf() const;
+
+private:
+    std::vector<float> data_;
     std::vector<std::size_t> shape_;
 
     /**
      * @brief Tính tổng số phần tử từ shape.
+     *
+     * Có kiểm tra:
+     * - dimension bằng 0
+     * - overflow của std::size_t
      */
     static std::size_t calculate_size(
         const std::vector<std::size_t>& shape
