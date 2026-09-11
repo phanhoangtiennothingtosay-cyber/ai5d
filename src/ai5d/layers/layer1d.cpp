@@ -1,7 +1,6 @@
 #include "ai5d/layers/layer1d.hpp"
 
-#include <algorithm>
-#include <stdexcept>
+#include <cmath>
 
 namespace ai5d::layers {
 
@@ -22,7 +21,7 @@ Tensor Layer1D::forward(const Tensor& input) const
 
 float Layer1D::process(float value) const
 {
-    return value;
+    return std::tanh(value);
 }
 
 std::size_t Layer1D::input_size() const
