@@ -7,35 +7,51 @@
 namespace ai5d {
 
 /**
- * @brief Tensor dữ liệu cơ bản của AI5D.
+ * @brief Core Tensor container của AI5D.
  *
- * Tensor sử dụng:
- * - float32 làm scalar mặc định.
- * - contiguous storage.
- * - row-major layout cho Tensor từ 2D trở lên.
- * - deep copy.
+ * Contract v0.1:
+ * - Scalar type: float32.
+ * - Storage: contiguous.
+ * - Layout: row-major.
+ * - Copy: deep copy.
+ * - Move: noexcept.
  *
  * Shape:
- *   [D]       -> vector 1D
- *   [R, C]    -> matrix 2D
- *   [D0,...]  -> Tensor nhiều chiều
+ *   [D]    -> vector 1D
+ *   [R, C] -> matrix 2D
+ *   [D0, ...] -> Tensor nhiều chiều
+ *
+ * Tensor mặc định (Tensor{}) đại diện cho empty Tensor.
  */
 class Tensor {
 public:
-    Tensor();
-    explicit Tensor(const std::vector<std::size_t>& shape);
+    Tensor() = default;
+
+    /**
+     * @brief Tạo Tensor từ shape.
+     *
+     * @deprecated
+     * Dùng Tensor::from_shape() cho code mới để tránh
+     * ambiguity giữa shape và raw data.
+     */
+    [[deprecated(
+        "Use Tensor::from_shape() for shape construction."
+    )]]
+    explicit Tensor(
+        const std::vector<std::size_t>& shape
+    );
 
     /**
      * @brief Tạo Tensor từ dữ liệu thô.
      *
      * Ví dụ:
-     * Tensor{1.0f, 2.0f, 3.0f}
+     * Tensor values{1.0f, 2.0f, 3.0f};
      *
-     * sẽ có shape [3].
+     * Shape sẽ là [3].
      */
     Tensor(std::initializer_list<float> data);
 
-    ~Tensor();
+    ~Tensor() = default;
 
     // Explicit copy semantics.
     Tensor(const Tensor&) = default;
@@ -46,23 +62,21 @@ public:
     Tensor& operator=(Tensor&&) noexcept = default;
 
     /**
-     * @brief Tạo Tensor chỉ từ shape.
-     *
-     * Đây là API rõ ràng để phân biệt shape
-     * với dữ liệu thô.
+     * @brief Tạo Tensor từ shape một cách rõ ràng.
      *
      * Ví dụ:
-     * Tensor::from_shape({2, 3});
+     * Tensor matrix = Tensor::from_shape({2, 3});
      */
     static Tensor from_shape(
         const std::vector<std::size_t>& shape
     );
 
     /**
-     * @brief Truy cập vùng dữ liệu liên tục.
+     * @brief Pointer tới vùng dữ liệu contiguous.
      *
-     * Pointer chỉ hợp lệ trong lifetime của Tensor
-     * và có thể mất hiệu lực sau reshape/resize.
+     * Pointer chỉ hợp lệ trong lifetime của Tensor.
+     * Pointer có thể mất hiệu lực sau khi Tensor được
+     * reshape hoặc thay đổi storage.
      */
     float* data();
     const float* data() const;
@@ -73,7 +87,7 @@ public:
     std::size_t size() const;
 
     /**
-     * @brief Số chiều.
+     * @brief Số chiều của Tensor.
      */
     std::size_t ndim() const;
 
@@ -83,17 +97,22 @@ public:
     const std::vector<std::size_t>& shape() const;
 
     /**
-     * @brief Truy cập phần tử theo flat index.
+     * @brief Truy cập phần tử bằng flat index.
      *
-     * @throws std::out_of_range nếu index không hợp lệ.
+     * Tensor sử dụng contiguous row-major storage.
+     *
+     * @throws std::out_of_range nếu index >= size().
      */
     float& operator[](std::size_t index);
     const float& operator[](std::size_t index) const;
 
     /**
-     * @brief Thay đổi shape nhưng không thay đổi dữ liệu.
+     * @brief Thay đổi cách diễn giải shape.
      *
-     * Tổng số phần tử trước và sau phải giống nhau.
+     * Không được thay đổi tổng số phần tử.
+     *
+     * @throws std::invalid_argument nếu shape mới
+     *         không có cùng số phần tử.
      */
     void reshape(
         const std::vector<std::size_t>& new_shape
@@ -105,27 +124,27 @@ public:
     bool empty() const;
 
     /**
-     * @brief Xóa toàn bộ dữ liệu và shape.
+     * @brief Xóa dữ liệu và shape.
      */
     void clear();
 
     /**
-     * @brief Truy cập vector dữ liệu thô.
+     * @brief Truy cập vector storage.
      */
     std::vector<float>& vector();
     const std::vector<float>& vector() const;
 
     /**
-     * @brief Kiểm tra Tensor có chứa NaN hay không.
+     * @brief Kiểm tra Tensor có chứa NaN.
      *
-     * Không tự động gọi trong các hot path.
+     * Không được tự động gọi trong hot path.
      */
     bool has_nan() const;
 
     /**
-     * @brief Kiểm tra Tensor có chứa Inf hay không.
+     * @brief Kiểm tra Tensor có chứa Inf.
      *
-     * Không tự động gọi trong các hot path.
+     * Không được tự động gọi trong hot path.
      */
     bool has_inf() const;
 
@@ -136,9 +155,9 @@ private:
     /**
      * @brief Tính tổng số phần tử từ shape.
      *
-     * Có kiểm tra:
-     * - dimension bằng 0
-     * - overflow của std::size_t
+     * Kiểm tra:
+     * - dimension == 0
+     * - size_t multiplication overflow
      */
     static std::size_t calculate_size(
         const std::vector<std::size_t>& shape
