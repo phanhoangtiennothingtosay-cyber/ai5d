@@ -7,14 +7,17 @@
 namespace ai5d::layers {
 
 /**
- * @brief Tầng 1D của AI5D.
+ * @brief Tầng xử lý 1D cơ bản của AI5D.
  *
- * Layer1D là tầng xử lý cơ sở, làm việc trực tiếp với
- * dữ liệu vector trước khi chuyển lên tầng 2D.
+ * Layer1D là đơn vị xử lý thấp nhất.
  *
- * WARNING:
- * Đây là phiên bản BETA / EXPERIMENTAL.
- * API và thuật toán có thể thay đổi.
+ * Nhiệm vụ:
+ * - Nhận dữ liệu Tensor.
+ * - Xử lý từng phần tử thông qua process().
+ * - Trả về Tensor đã được xử lý.
+ *
+ * Layer1D chưa thực hiện grouping hay ranking.
+ * Những nhiệm vụ đó thuộc các tầng cao hơn.
  */
 class Layer1D {
 public:
@@ -22,17 +25,17 @@ public:
     ~Layer1D() = default;
 
     /**
-     * @brief Xử lý một Tensor đầu vào.
+     * @brief Xử lý toàn bộ Tensor đầu vào.
      *
-     * @param input Dữ liệu 1D đầu vào.
-     * @return Tensor kết quả.
+     * @param input Tensor đầu vào.
+     * @return Tensor sau khi xử lý.
      */
     Tensor forward(const Tensor& input) const;
 
     /**
-     * @brief Xử lý một phần tử dữ liệu.
+     * @brief Xử lý một phần tử.
      *
-     * Hàm này là đơn vị xử lý nhỏ nhất của Layer1D.
+     * Đây là đơn vị tính toán cơ bản của Layer1D.
      *
      * @param value Giá trị đầu vào.
      * @return Giá trị sau xử lý.
@@ -40,12 +43,18 @@ public:
     float process(float value) const;
 
     /**
-     * @brief Số phần tử đầu vào mà layer có thể xử lý.
+     * @brief Lấy kích thước đầu vào đã cấu hình.
+     *
+     * @return Số phần tử đầu vào.
+     *
+     * Giá trị 0 nghĩa là chưa cấu hình kích thước cố định.
      */
     std::size_t input_size() const;
 
     /**
      * @brief Đặt kích thước đầu vào.
+     *
+     * @param size Số phần tử mà Layer1D dự kiến xử lý.
      */
     void set_input_size(std::size_t size);
 
