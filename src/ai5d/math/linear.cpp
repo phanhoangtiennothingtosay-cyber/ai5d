@@ -1,5 +1,6 @@
 #include "ai5d/math/linear.hpp"
 
+#include <cstddef>
 #include <stdexcept>
 #include <vector>
 
@@ -9,7 +10,8 @@ Tensor linear(
     const Tensor& input,
     const Tensor& weights,
     const Tensor& bias
-) {
+)
+{
     Tensor output = matmul(input, weights);
 
     if (!bias.empty()) {
@@ -22,7 +24,8 @@ Tensor linear(
 Tensor matmul(
     const Tensor& lhs,
     const Tensor& rhs
-) {
+)
+{
     if (lhs.empty() || rhs.empty()) {
         return Tensor{};
     }
@@ -45,9 +48,22 @@ Tensor matmul(
         );
     }
 
-    Tensor output(
-        std::vector<std::size_t>{lhs_rows, rhs_cols}
-    );
+    /*
+     * [M, K] x [K, N] -> [M, N]
+     *
+     * Row-major:
+     *
+     * lhs[i, k] = lhs[i * K + k]
+     * rhs[k, j] = rhs[k * N + j]
+     *
+     * output[i, j] =
+     *     sum(lhs[i, k] * rhs[k, j])
+     */
+    Tensor output =
+        Tensor::from_shape({
+            lhs_rows,
+            rhs_cols
+        });
 
     for (std::size_t i = 0; i < lhs_rows; ++i) {
         for (std::size_t j = 0; j < rhs_cols; ++j) {
@@ -70,7 +86,8 @@ Tensor matmul(
 Tensor add_bias(
     const Tensor& input,
     const Tensor& bias
-) {
+)
+{
     if (input.empty()) {
         return Tensor{};
     }
@@ -79,16 +96,61 @@ Tensor add_bias(
         return input;
     }
 
-    if (bias.size() != input.size()) {
+    /*
+     * 1D:
+     *
+     * [N] + [N]
+     *
+     * Exact shape match.
+     */
+    if (input.ndim() == 1) {
+        if (bias.ndim() != 1 ||
+            bias.size() != input.size()) {
+
+            throw std::invalid_argument(
+                "AI5D: 1D bias must match input shape."
+            );
+        }
+
+        Tensor output = input;
+
+        for (std::size_t i = 0; i < input.size(); ++i) {
+            output[i] += bias[i];
+        }
+
+        return output;
+    }
+
+    /*
+     * N-D:
+     *
+     * [..., N] + [N]
+     *
+     * Broadcast bias along the last dimension.
+     *
+     * v0.1 does not support arbitrary broadcasting.
+     */
+    if (bias.ndim() != 1) {
         throw std::invalid_argument(
-            "AI5D: bias size must match input size."
+            "AI5D: bias broadcasting requires "
+            "a 1D bias tensor."
+        );
+    }
+
+    const std::size_t last_dimension =
+        input.shape().back();
+
+    if (bias.size() != last_dimension) {
+        throw std::invalid_argument(
+            "AI5D: bias size must match "
+            "the input's last dimension."
         );
     }
 
     Tensor output = input;
 
-    for (std::size_t i = 0; i < output.size(); ++i) {
-        output[i] += bias[i];
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        output[i] += bias[i % last_dimension];
     }
 
     return output;
@@ -98,7 +160,8 @@ float dot(
     const float* lhs,
     const float* rhs,
     std::size_t size
-) {
+)
+{
     if (lhs == nullptr || rhs == nullptr) {
         throw std::invalid_argument(
             "AI5D: dot received a null pointer."
