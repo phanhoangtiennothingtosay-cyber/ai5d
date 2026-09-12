@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "ai5d/math/topk.hpp"
+
 namespace ai5d::layers {
 
 Tensor Layer4D::forward(const Tensor& input) const
@@ -56,13 +58,24 @@ std::vector<Tensor> Layer4D::top_k(
         return {};
     }
 
-    std::vector<Tensor> ranked = rank(candidates);
+    std::vector<math::RankedCandidate> ranked_candidates;
+    ranked_candidates.reserve(candidates.size());
 
-    if (k < ranked.size()) {
-        ranked.resize(k);
+    for (const Tensor& candidate : candidates) {
+        ranked_candidates.push_back({candidate, evaluate(candidate)});
     }
 
-    return ranked;
+    const std::vector<math::RankedCandidate> top =
+        math::top_k(ranked_candidates, k);
+
+    std::vector<Tensor> result;
+    result.reserve(top.size());
+
+    for (const math::RankedCandidate& item : top) {
+        result.push_back(item.value);
+    }
+
+    return result;
 }
 
 float Layer4D::evaluate(const Tensor& input) const
