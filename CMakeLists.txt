@@ -41,6 +41,10 @@ add_library(ai5d_core STATIC
 
     src/ai5d/routing/compute_router.cpp
     src/ai5d/logging/logger.cpp
+
+    src/ai5d/training/optimizer.cpp
+    src/ai5d/training/reinforce.cpp
+    src/ai5d/training/loss.cpp
 )
 
 target_include_directories(ai5d_core
@@ -133,3 +137,13 @@ foreach(CONFIG Debug Release RelWithDebInfo MinSizeRel)
     )
 
 endforeach()
+
+# ------------------------------------------------------------
+# 8. Tests
+# ------------------------------------------------------------
+
+enable_testing()
+
+add_executable(test_tensor tests/test_tensor.cpp)
+target_link_libraries(test_tensor PRIVATE ai5d_core)
+add_test(NAME test_tensor COMMAND test_tensor)
